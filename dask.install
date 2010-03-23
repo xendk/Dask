@@ -1,0 +1,17 @@
+<?php
+
+// $Id$
+
+/**
+ * Implements hook_install().
+ */
+function dask_install() {
+  variable_set('admin_theme', 'seven');
+  if ($voc = taxonomy_vocabulary_load_multiple(array(), array('machine_name' => 'area'))) {
+    $voc = reset($voc);
+    foreach (array('Drupal', 'Frontend') as $name) {
+      taxonomy_term_save((object) array('name' => $name, 'vid' => $voc->vid));
+    }
+  }
+
+}

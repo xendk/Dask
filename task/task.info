@@ -1,0 +1,8 @@
+; $Id$
+
+name = Task
+description = Task node type
+package = Dask
+core = 7.x
+files[] = task.module
+dependencies[] = taxonomy

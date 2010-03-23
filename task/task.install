@@ -1,0 +1,150 @@
+<?php
+// $Id: node.install,v 1.45 2010/03/01 07:39:12 dries Exp $
+
+/**
+ * @file
+ * Install, update and uninstall functions for the task module.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function task_install() {
+
+  $node_info = (object) array(
+    'type' => 'task',
+    'name' => t('Task'),
+    'base' => 'node_content',
+    'description' => t('Task.'),
+    'help' => '',
+    'locked' => TRUE,
+  );
+  node_type_save($node_info);
+
+  variable_set('node_options_task', array('status'));
+  variable_set('node_submitted_task', FALSE);
+
+  // Area field.
+  if (!taxonomy_vocabulary_load_multiple(array(), array('machine_name' => 'area'))) {
+    $description = t('The area of this task.');
+    $help = t('Select the area of this task.');
+    $vocabulary = (object) array(
+      'name' => 'Area',
+      'description' => $description,
+      'machine_name' => 'area',
+      'help' => $help,
+    );
+    taxonomy_vocabulary_save($vocabulary);
+
+    $field = array(
+      'field_name' => 'taxonomy_' . $vocabulary->machine_name,
+      'type' => 'taxonomy_term_reference',
+      'cardinality' => 1,
+      'settings' => array(
+        'allowed_values' => array(
+          array(
+            'vid' => $vocabulary->vid,
+            'parent' => 0,
+          ),
+        ),
+      ),
+    );
+    field_create_field($field);
+
+    $instance = array(
+      'field_name' => 'taxonomy_' . $vocabulary->machine_name,
+      'object_type' => 'node',
+      'label' => $vocabulary->name,
+      'bundle' => 'task',
+      'description' => $vocabulary->help,
+      'required' => TRUE,
+      'widget' => array(
+        'type' => 'options_select',
+        'weight' => 1,
+      ),
+    );
+    field_create_instance($instance);
+  }
+
+  // State field.
+  $states = array(
+    TASK_ACTIVE => 'active',
+    TASK_WORKING_ON => 'working on',
+    TASK_ESTIMATE => 'estimate',
+    TASK_BLOCKED => 'blocked',
+    TASK_FEEDBACK => 'feedback',
+    TASK_RESOLVED => 'resolved',
+  );
+  $allowed_values = '';
+  foreach ($states as $id => $name) {
+    $allowed_values .= $id . '|' . $name . "\n";
+  }
+  
+  $field = array(
+    'field_name' => 'state',
+    'type' => 'list_number',
+    'cardinality' => 1,
+    'settings' => array(
+      'allowed_values' => $allowed_values,
+    ),
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'state',
+    'object_type' => 'node',
+    'label' => 'State',
+    'bundle' => 'task',
+    'description' => 'State of this task',
+    'required' => TRUE,
+    'widget' => array(
+      'type' => 'options_select',
+      'weight' => 1,
+    ),
+  );
+  field_create_instance($instance);
+
+  // Assigned to field.
+  $field = array(
+    'field_name' => 'assigned_to',
+    'type' => 'user_reference',
+    'cardinality' => 1,
+    'settings' => array(
+      'referenceable_roles' => array(2 => 2), // Authenticated user.
+      'referenceable_status' => array(1 => '1', 0 => '0'),
+    ),
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'assigned_to',
+    'object_type' => 'node',
+    'label' => 'Assigned to',
+    'bundle' => 'task',
+    'description' => 'Who is responsible for this task',
+    'required' => TRUE,
+    'widget' => array(
+      'type' => 'user_reference_autocomplete',
+      'autocomplete_match' => 'contains',
+      'size' => 60,
+      'autocomplete_path' => 'user_reference/autocomplete',
+      'weight' => 1,
+    ),
+  );
+  field_create_instance($instance);
+
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function task_uninstall() {
+  if ($voc = taxonomy_vocabulary_load_multiple(array(), array('machine_name' => 'area'))) {
+    $voc = reset($voc);
+    field_delete_field('taxonomy_' . $voc->machine_name);
+    taxonomy_vocabulary_delete($voc->vid);
+  }
+  field_delete_field('state');
+  field_delete_field('assigned_to');
+  node_type_delete('task');
+}

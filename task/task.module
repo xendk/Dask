@@ -1,0 +1,40 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Task tracking
+ */
+
+define('TASK_ACTIVE', 1);
+define('TASK_WORKING_ON', 2);
+define('TASK_ESTIMATE', 3); // We're reserving this for later.
+define('TASK_BLOCKED', 4);
+define('TASK_FEEDBACK', 5);
+define('TASK_RESOLVED', 6);
+
+
+function task_state_active($state = NULL) {
+  static $states = array(TASK_ACTIVE, TASK_WORKING_ON, TASK_ESTIMATE);
+  if ($state) {
+    return in_array($state, $states);
+  }
+  return $states;
+}
+
+function task_state_blocked($state = NULL) {
+  static $states = array(TASK_BLOCKED, TASK_FEEDBACK);
+  if ($state) {
+    return in_array($state, $states);
+  }
+  return $states;
+}
+
+function task_state_resolved($state = NULL) {
+  static $states = array(TASK_RESOLVED);
+  if ($state) {
+    return in_array($state, $states);
+  }
+  return $states;
+}
+
