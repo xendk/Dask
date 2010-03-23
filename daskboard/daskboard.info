@@ -1,0 +1,8 @@
+; $Id$
+
+name = Daskboard
+description = Dask dashboard
+package = Dask
+core = 7.x
+files[] = daskboard.module
+dependencies[] = task

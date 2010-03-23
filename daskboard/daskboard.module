@@ -1,0 +1,47 @@
+<?php
+
+// $Id$
+
+/**
+ * Implements hook_menu().
+ */
+function daskboard_menu() {
+  $items['daskboard'] = array(
+    'title' => 'daskboard',
+    'page callback' => 'daskboard_page',
+    'access callback' => 'user_is_logged_in',
+  );
+
+  $items['daskboard_mockup'] = array(
+    'title' => 'daskboard',
+    'page callback' => 'daskboard_page_mockup',
+    'access callback' => 'user_is_logged_in',
+  );
+  
+  return $items;
+}
+
+function daskboard_page($uid = 0) {
+  
+}
+
+function daskboard_page_mockup() {
+  drupal_add_css(drupal_get_path('module', 'daskboard') . '/daskboard.css');
+
+  $output = '';
+  for ($j = 0; $j < 3; $j++) {
+    $output .= '<div class="task-queue task-queue-' . $j . '">
+<h1>tete</h1><div class=inner>';
+    for ($i = 0; $i < ($j == 1 ? 2 : 5); $i++) {
+      $output .= '
+<div class=node-task>
+<h2>Task title, kan være lidt lang, men heller ikke for lang.</h2>
+State: acive, blocks 4
+</div>
+';
+    }
+    $output .= '</div></div>';
+  }
+  return $output;
+}
+
