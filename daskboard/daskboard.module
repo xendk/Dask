@@ -21,27 +21,46 @@ function daskboard_menu() {
   return $items;
 }
 
+/**
+ * Implements hook_init().
+ */
+function daskboard_init() {
+  drupal_add_css(drupal_get_path('module', 'daskboard') . '/daskboard.css');
+}
+
 function daskboard_page($uid = 0) {
-  
+   
 }
 
 function daskboard_page_mockup() {
   drupal_add_css(drupal_get_path('module', 'daskboard') . '/daskboard.css');
+  $node = node_load(1);
 
-  $output = '';
+  $build = array();
   for ($j = 0; $j < 3; $j++) {
-    $output .= '<div class="task-queue task-queue-' . $j . '">
-<h1>tete</h1><div class=inner>';
+    $build[$j] = array(
+      '#theme' => 'taskqueue',
+    );
     for ($i = 0; $i < ($j == 1 ? 2 : 5); $i++) {
-      $output .= '
-<div class=node-task>
-<h2>Task title, kan være lidt lang, men heller ikke for lang.</h2>
-State: acive, blocks 4
-</div>
-';
+      $build[$j]['items'][] = node_view($node, 'taskcard');
     }
-    $output .= '</div></div>';
   }
-  return $output;
+  return $build;
 }
 
+/**
+ * Implements hook_theme().
+ */
+function daskboard_theme() {
+  return array(
+    'taskqueue' => array(
+      'render element' => 'elements',
+      'template' => 'taskqueue',
+    ),
+  );
+}
+
+function template_preprocess_taskqueue(&$variables) {
+  $variables['items'] = $variables['elements']['items'];
+  $variables['title'] = isset($variables['elements']['#title']) ? $variables['elements']['#title'] : '';
+}

@@ -122,7 +122,7 @@ function task_install() {
     'label' => 'Assigned to',
     'bundle' => 'task',
     'description' => 'Who is responsible for this task',
-    'required' => TRUE,
+    'required' => FALSE,
     'widget' => array(
       'type' => 'user_reference_autocomplete',
       'autocomplete_match' => 'contains',

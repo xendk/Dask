@@ -13,6 +13,12 @@ define('TASK_BLOCKED', 4);
 define('TASK_FEEDBACK', 5);
 define('TASK_RESOLVED', 6);
 
+/**
+ * Implements hook_init().
+ */
+function task_init() {
+  drupal_add_css(drupal_get_path('module', 'task') . '/task.css');
+}
 
 function task_state_active($state = NULL) {
   static $states = array(TASK_ACTIVE, TASK_WORKING_ON, TASK_ESTIMATE);
@@ -38,3 +44,34 @@ function task_state_resolved($state = NULL) {
   return $states;
 }
 
+function task_preprocess_node(&$variables) {
+  $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'];
+}
+
+function task_entity_info_alter(&$entity_info) {
+  $entity_info['node']['view modes']['taskcard'] = array(
+    'label' => t('Task card'),
+  );
+}
+
+function task_field_ui_view_modes_tabs() {
+  $modes = array(
+    'task' => array(
+      'title' => t('Task'),
+      'view modes' => array('taskcard'),
+    ),
+  );
+  return $modes;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function task_theme() {
+  return array(
+    'node__taskcard' => array(
+      'render element' => 'elements',
+      'template' => 'node--taskcard',
+    ),
+  );
+}
