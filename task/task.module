@@ -13,10 +13,10 @@ define('TASK_TYPE_CLOSED', 4);
 
 define('TASK_ACTIVE', 1);
 define('TASK_WORKING_ON', 2);
-define('TASK_ESTIMATE', 3); // We're reserving this for later.
-define('TASK_BLOCKED', 4);
-define('TASK_FEEDBACK', 5);
-define('TASK_RESOLVED', 6);
+define('TASK_BLOCKED', 3);
+define('TASK_FEEDBACK', 4);
+define('TASK_RESOLVED', 5);
+define('TASK_REJECTED', 5);
 
 /**
  * Implements hook_init().
@@ -30,7 +30,6 @@ function task_state_type($type, $state = NULL) {
     TASK_TYPE_ACTIVE => array(
       TASK_ACTIVE,
       TASK_WORKING_ON,
-      TASK_ESTIMATE,
     ),
     TASK_TYPE_BLOCKED => array(
       TASK_BLOCKED,
@@ -41,6 +40,7 @@ function task_state_type($type, $state = NULL) {
     ),
     TASK_TYPE_CLOSED => array(
       TASK_RESOLVED,
+      TASK_REJECTED,
     ),
   );
   if ($state) {
