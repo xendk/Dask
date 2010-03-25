@@ -6,6 +6,11 @@
  * Task tracking
  */
 
+define('TASK_TYPE_ACTIVE', 1);
+define('TASK_TYPE_BLOCKED', 2);
+define('TASK_TYPE_RESOLVED', 3);
+define('TASK_TYPE_CLOSED', 4);
+
 define('TASK_ACTIVE', 1);
 define('TASK_WORKING_ON', 2);
 define('TASK_ESTIMATE', 3); // We're reserving this for later.
@@ -20,28 +25,28 @@ function task_init() {
   drupal_add_css(drupal_get_path('module', 'task') . '/task.css');
 }
 
-function task_state_active($state = NULL) {
-  static $states = array(TASK_ACTIVE, TASK_WORKING_ON, TASK_ESTIMATE);
+function task_state_type($type, $state = NULL) {
+  static $state_types = array(
+    TASK_TYPE_ACTIVE => array(
+      TASK_ACTIVE,
+      TASK_WORKING_ON,
+      TASK_ESTIMATE,
+    ),
+    TASK_TYPE_BLOCKED => array(
+      TASK_BLOCKED,
+      TASK_FEEDBACK,
+    ),
+    TASK_TYPE_RESOLVED => array(
+      TASK_RESOLVED,
+    ),
+    TASK_TYPE_CLOSED => array(
+      TASK_RESOLVED,
+    ),
+  );
   if ($state) {
-    return in_array($state, $states);
+    return in_array($state, $state_types[$type]);
   }
-  return $states;
-}
-
-function task_state_blocked($state = NULL) {
-  static $states = array(TASK_BLOCKED, TASK_FEEDBACK);
-  if ($state) {
-    return in_array($state, $states);
-  }
-  return $states;
-}
-
-function task_state_resolved($state = NULL) {
-  static $states = array(TASK_RESOLVED);
-  if ($state) {
-    return in_array($state, $states);
-  }
-  return $states;
+  return $state_types[$type];
 }
 
 function task_preprocess_node(&$variables) {
