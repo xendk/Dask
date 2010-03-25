@@ -29,7 +29,12 @@ function daskboard_init() {
 }
 
 function daskboard_page($uid = 0) {
-   
+  dpm(field_info_field('depends_on'));
+  //$node = node_load(2);
+  //task_update_dependent($node);
+  //dpm(    $field = field_read_instance('node', 'depends_on', 'task'));
+  // dpm(field_attach_query(25, array(array('type', 'node'), array('bundle', 'task'), array('nid', 1))));
+  return '';
 }
 
 function daskboard_page_mockup() {

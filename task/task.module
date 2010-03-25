@@ -16,7 +16,7 @@ define('TASK_WORKING_ON', 2);
 define('TASK_BLOCKED', 3);
 define('TASK_FEEDBACK', 4);
 define('TASK_RESOLVED', 5);
-define('TASK_REJECTED', 5);
+define('TASK_REJECTED', 6);
 
 /**
  * Implements hook_init().
@@ -33,7 +33,7 @@ function task_state_type($type, $state = NULL) {
     ),
     TASK_TYPE_BLOCKED => array(
       TASK_BLOCKED,
-      TASK_FEEDBACK,
+      // TASK_FEEDBACK,
     ),
     TASK_TYPE_RESOLVED => array(
       TASK_RESOLVED,
@@ -79,4 +79,139 @@ function task_theme() {
       'template' => 'node--taskcard',
     ),
   );
+}
+
+/**
+ * Implements hook_node_load().
+ */
+function task_node_load($nodes, $types) {
+  $result = db_select('task_dirty')
+    ->addField('task_dirty', 'nid')
+    ->condition('nid', array_keys($nodes))
+    ->execute();
+
+  $dirty = $result->fetchAllAssoc('nid');
+  foreach ($nodes as $nid => $node) {
+    $node->dirty = isset($dirty[$nid]);
+  }
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+function task_node_presave($node) {
+  if ($node->type == 'task') {
+    // Always save a new revision.
+    $node->revision = TRUE;
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function task_node_update($node) {
+  if ($node->type == 'task') {
+    // This is all to complicated, use task_dirty($node, TRUE)
+    $field = field_info_field('depends_on');
+    $dependens = field_attach_query($field['id'], array(array('type', 'node'), array('bundle', $node->type), array('nid', $node->nid)));
+    if (isset($dependens['node'])) {
+      foreach ($dependens['node'] as $nid => $dep)
+      task_update_dependent(node_load($nid));
+    }
+  }
+}
+
+function task_update($node) {
+  if ($node->dirty) { // Wont work, nodes are cached, we need to work around that.
+    // dirty($dependents); Not necessary, node_save will queue them.
+    update_state_from_dependees();
+  }
+}
+
+/*
+ * This is the tricky part. We need to support different depth, and track how
+ * deep we are. When a node is saved by a user we must process:
+ *
+ * The node itself,
+ * It dependants, as they might be the next thing in the queue for the user.
+ * And of course dirty the dependants of the dependants.
+ *
+ * That's two levels of processing, and 3 of dirtying.
+ * In the queue runner, we just need to process one, and dirty its dependants.
+ *
+ * However, if node_save does the dirtying, which makes sense it has no idea of the depth..
+ *
+ * task_update could track it, as it would be called from within itself?
+ * (assuming it does a node_save, which calls task_dirty). 
+ */
+function task_dirty($node, $process = FALSE) {
+  task_set_dirty($node); // Mark dirty.
+  if ($process) {
+    task_update($node); // Update the node right away, so direct dependants gets marked dirty.
+  }
+  else {
+    task_queue_update($node); // Else queue for later processing.
+  }
+}
+
+function task_set_dirty($node) {
+  if (is_object($node)) {
+    $nid = $node->nid;
+  }
+  else {
+    $nid = $node;
+  }
+
+  db_insert('task_dirty')
+    ->fields(array('nid' => $nid))
+    ->execute();
+}
+
+
+function task_update_dependent($node) {
+  $field = field_info_field('state');
+  $nids = array();
+  foreach ($node->depends_on[LANGUAGE_NONE] as $delta => $val) {
+    $nids[] = $val['nid'];
+  }
+  $conditions = array(
+    array('type', 'node'),
+    array('bundle', $node->type),
+    array('entity_id', $nids, 'IN'),
+    array('value', task_state_type(TASK_TYPE_RESOLVED) , 'NOT IN')
+  );
+
+  if (field_attach_query($field['id'], $conditions, array('count' => TRUE))) {
+    if (task_state_type(TASK_TYPE_ACTIVE, $node->state[LANGUAGE_NONE][0]['value'])) {
+      $node->state[LANGUAGE_NONE][0]['value'] = TASK_BLOCKED;
+      node_save($node);
+    }
+  }
+  else {
+    if (task_state_type(TASK_TYPE_BLOCKED, $node->state[LANGUAGE_NONE][0]['value'])) {
+      $node->state[LANGUAGE_NONE][0]['value'] = TASK_ACTIVE;
+      node_save($node);
+    }
+  }
+}
+
+/**
+ * Get the nodes the given node depends on.
+ */
+function task_get_dependees($node) {
+  
+}
+
+/**
+ * Returns the nodes depended upon by the given node.
+ */
+function task_get_dependants($node, $conditions = array(), $count = FALSE) {
+  $conditions += array(
+    array('type', 'node'),
+    array('bundle', $node->type),
+    array('entity_id', $nids, 'IN'),
+  );
+
+  if (field_attach_query($field['id'], $conditions, array('count' => TRUE))) {
+
 }

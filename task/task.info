@@ -6,3 +6,5 @@ package = Dask
 core = 7.x
 files[] = task.module
 dependencies[] = taxonomy
+dependencies[] = user_reference
+dependencies[] = node_reference

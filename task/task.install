@@ -70,10 +70,10 @@ function task_install() {
   $states = array(
     TASK_ACTIVE => 'active',
     TASK_WORKING_ON => 'working on',
-    TASK_ESTIMATE => 'estimate',
     TASK_BLOCKED => 'blocked',
     TASK_FEEDBACK => 'feedback',
     TASK_RESOLVED => 'resolved',
+    TASK_REJECTED => 'rejected',
   );
   $allowed_values = '';
   foreach ($states as $id => $name) {
@@ -133,6 +133,53 @@ function task_install() {
   );
   field_create_instance($instance);
 
+  // Depends on field.
+  $field = array(
+    'field_name' => 'depends_on',
+    'type' => 'node_reference',
+    'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+    'settings' => array(
+      'referenceable_types' => array('task' => 'task'),
+    ),
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'depends_on',
+    'object_type' => 'node',
+    'label' => 'Depends on',
+    'bundle' => 'task',
+    'description' => 'Other tasks this depends on',
+    'required' => FALSE,
+    'widget' => array(
+      'type' => 'node_reference_autocomplete',
+      'autocomplete_match' => 'contains',
+      'size' => 60,
+      'autocomplete_path' => 'node_reference/autocomplete',
+      'weight' => 1,
+    ),
+  );
+  field_create_instance($instance);  
+  
+}
+
+/**
+ * Implements hook_schema().
+ */
+function task_schema() {
+  $schema['task_dirty'] = array(
+    'description' => 'Stores which task are dirty and needs update.',
+    'fields' => array(
+      'nid'  => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Node id of dirty node.',
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
+  return $schema;
 }
 
 /**
@@ -146,5 +193,6 @@ function task_uninstall() {
   }
   field_delete_field('state');
   field_delete_field('assigned_to');
+  field_delete_field('depends_on');
   node_type_delete('task');
 }
