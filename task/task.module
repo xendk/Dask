@@ -82,11 +82,22 @@ function task_theme() {
 }
 
 /**
+ * Implements hook_cron_queue_info().
+ */
+function task_cron_queue_info() {
+  $queues['task_update'] = array(
+    'worker callback' => 'task_update_nid',
+    'time' => 60,
+  );
+  return $queues;
+}
+
+/**
  * Implements hook_node_load().
  */
 function task_node_load($nodes, $types) {
   $result = db_select('task_dirty')
-    ->addField('task_dirty', 'nid')
+    ->fields('task_dirty', array('nid'))
     ->condition('nid', array_keys($nodes))
     ->execute();
 
@@ -111,20 +122,14 @@ function task_node_presave($node) {
  */
 function task_node_update($node) {
   if ($node->type == 'task') {
-    // This is all to complicated, use task_dirty($node, TRUE)
-    $field = field_info_field('depends_on');
-    $dependens = field_attach_query($field['id'], array(array('type', 'node'), array('bundle', $node->type), array('nid', $node->nid)));
-    if (isset($dependens['node'])) {
-      foreach ($dependens['node'] as $nid => $dep)
-      task_update_dependent(node_load($nid));
-    }
-  }
-}
-
-function task_update($node) {
-  if ($node->dirty) { // Wont work, nodes are cached, we need to work around that.
-    // dirty($dependents); Not necessary, node_save will queue them.
-    update_state_from_dependees();
+    // This is all to complicated, use task_dirty($node)
+    task_dirty($node);
+    // $field = field_info_field('depends_on');
+    // $dependens = field_attach_query($field['id'], array(array('type', 'node'), array('bundle', $node->type), array('nid', $node->nid)));
+    // if (isset($dependens['node'])) {
+    //   foreach ($dependens['node'] as $nid => $dep)
+    //   task_update_dependent(node_load($nid));
+    // }
   }
 }
 
@@ -144,15 +149,42 @@ function task_update($node) {
  * task_update could track it, as it would be called from within itself?
  * (assuming it does a node_save, which calls task_dirty). 
  */
-function task_dirty($node, $process = FALSE) {
-  task_set_dirty($node); // Mark dirty.
-  if ($process) {
-    task_update($node); // Update the node right away, so direct dependants gets marked dirty.
+function task_dirty($node, $set_recurse = NULL) {
+  // Track recursion.
+  static $recurse = TRUE;
+  static $level = 0;
+  $level += 1;
+
+  if (is_bool($set_recurse)) {
+    $recurse = $set_recurse;
   }
-  else {
-    task_queue_update($node); // Else queue for later processing.
+
+  if ($node) {
+    task_set_dirty($node); // Mark dirty.
+    // Only process recursively two levels.
+    if ($recurse and $level < 3) {
+      task_update($node); // Update the node right away, so direct dependants gets marked dirty.
+    }
+    else {
+      task_queue_update($node); // Else queue for later processing.
+    }
   }
+  $level -= 1;
 }
+
+function task_update_nid($nid) {
+  task_dirty(NULL, FALSE);
+  $node = node_load($nid);
+  task_update($node);
+}
+
+
+function task_queue_update($node) {
+  // Add to queue
+  $queue = DrupalQueue::get('task_update');
+  $queue->createItem($node->nid);
+}
+
 
 function task_set_dirty($node) {
   if (is_object($node)) {
@@ -162,56 +194,98 @@ function task_set_dirty($node) {
     $nid = $node;
   }
 
+  /*
+   This throws exception, perhaps?
   db_insert('task_dirty')
     ->fields(array('nid' => $nid))
     ->execute();
+  */
+  db_query("INSERT IGNORE INTO {task_dirty} (nid) VALUES (:nid)", array(':nid' => $nid));
+}
+
+function task_set_undirty($node) {
+  if (is_object($node)) {
+    $nid = $node->nid;
+  }
+  else {
+    $nid = $node;
+  }
+
+  db_delete('task_dirty')
+    ->condition(array('nid', $nid))
+    ->execute();
+}
+
+function task_is_dirty($node) {
+  if (is_object($node)) {
+    $nid = $node->nid;
+  }
+  else {
+    $nid = $node;
+  }
+  return db_select('task_dirty')
+    ->condition('nid', $nid)
+    ->countQuery()
+    ->execute()
+    ->fetchField() > 0 ? TRUE : FALSE;
 }
 
 
-function task_update_dependent($node) {
-  $field = field_info_field('state');
-  $nids = array();
-  foreach ($node->depends_on[LANGUAGE_NONE] as $delta => $val) {
-    $nids[] = $val['nid'];
-  }
-  $conditions = array(
-    array('type', 'node'),
-    array('bundle', $node->type),
-    array('entity_id', $nids, 'IN'),
-    array('value', task_state_type(TASK_TYPE_RESOLVED) , 'NOT IN')
-  );
-
-  if (field_attach_query($field['id'], $conditions, array('count' => TRUE))) {
-    if (task_state_type(TASK_TYPE_ACTIVE, $node->state[LANGUAGE_NONE][0]['value'])) {
-      $node->state[LANGUAGE_NONE][0]['value'] = TASK_BLOCKED;
-      node_save($node);
+function task_update($node) {
+  if (task_is_dirty($node)) {
+    $field = field_info_field('state');
+    $nids = task_get_dependee_nids($node);
+    dpm('here');
+    dpm($nids);
+    $conditions = array(
+                        array('type', 'node'),
+                        array('entity_id', $nids, 'IN'),
+                        array('value', task_state_type(TASK_TYPE_RESOLVED) , 'NOT IN')
+                        );
+    $t = field_attach_query($field['id'], $conditions, array('count' => TRUE));
+    dpm($t);
+    if ($t > 0) {
+      dpm('b');
+      if (task_state_type(TASK_TYPE_ACTIVE, $node->state[LANGUAGE_NONE][0]['value'])) {
+        $node->state[LANGUAGE_NONE][0]['value'] = TASK_BLOCKED;
+        node_save($node);
+      }
     }
-  }
-  else {
-    if (task_state_type(TASK_TYPE_BLOCKED, $node->state[LANGUAGE_NONE][0]['value'])) {
-      $node->state[LANGUAGE_NONE][0]['value'] = TASK_ACTIVE;
-      node_save($node);
+    else {
+      dpm('a');
+      if (task_state_type(TASK_TYPE_BLOCKED, $node->state[LANGUAGE_NONE][0]['value'])) {
+        $node->state[LANGUAGE_NONE][0]['value'] = TASK_ACTIVE;
+        node_save($node);
+      }
     }
+    task_set_undirty($node);
   }
 }
 
 /**
  * Get the nodes the given node depends on.
  */
-function task_get_dependees($node) {
-  
+function task_get_dependee_nodes($node) {
+  return node_load_multiple(task_get_dependee_nids($node));
+}
+
+function task_get_dependee_nids($node) {
+  return array_map('_task_nodereference_get_nid', $node->depends_on[LANGUAGE_NONE]);   
+}
+
+function _task_nodereference_get_nid($item) {
+  return $item['nid'];
 }
 
 /**
  * Returns the nodes depended upon by the given node.
  */
-function task_get_dependants($node, $conditions = array(), $count = FALSE) {
-  $conditions += array(
-    array('type', 'node'),
-    array('bundle', $node->type),
-    array('entity_id', $nids, 'IN'),
-  );
+function task_get_dependant_nodes($node) {
+  return node_load_multiple(task_get_dependant_nids($node));
+}
 
-  if (field_attach_query($field['id'], $conditions, array('count' => TRUE))) {
-
+function task_get_dependant_nids($node) {
+  $field = field_info_field('depends_on');
+  $dependants = field_attach_query($field['id'], array(array('type', 'node'), array('nid', $node->nid)));
+  return (isset($dependants['node']) ? array_keys($dependants['node']) : array());
 }
