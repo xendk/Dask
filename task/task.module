@@ -53,12 +53,20 @@ function task_preprocess_node(&$variables) {
   $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'];
 }
 
+/**
+ * Implements hook_entity_info_alter().
+ *
+ * Add our own view mode to nodes.
+ */
 function task_entity_info_alter(&$entity_info) {
   $entity_info['node']['view modes']['taskcard'] = array(
     'label' => t('Task card'),
   );
 }
 
+/**
+ * Implements hook_field_ui_view_modes_tabs().
+ */
 function task_field_ui_view_modes_tabs() {
   $modes = array(
     'task' => array(
@@ -103,6 +111,9 @@ function task_node_load($nodes, $types) {
 
   $dirty = $result->fetchAllAssoc('nid');
   foreach ($nodes as $nid => $node) {
+    // This is only for the sake of theming and like, anyone really interested
+    // in the dirty status of a node should use task_is_dirty(), as it isn't
+    // cached.
     $node->dirty = isset($dirty[$nid]);
   }
 }
@@ -122,14 +133,7 @@ function task_node_presave($node) {
  */
 function task_node_update($node) {
   if ($node->type == 'task') {
-    // This is all to complicated, use task_dirty($node)
     task_dirty($node);
-    // $field = field_info_field('depends_on');
-    // $dependens = field_attach_query($field['id'], array(array('type', 'node'), array('bundle', $node->type), array('nid', $node->nid)));
-    // if (isset($dependens['node'])) {
-    //   foreach ($dependens['node'] as $nid => $dep)
-    //   task_update_dependent(node_load($nid));
-    // }
   }
 }
 
@@ -195,7 +199,7 @@ function task_set_dirty($node) {
   }
 
   /*
-   This throws exception, perhaps?
+   TODO: This throws exception, perhaps?
   db_insert('task_dirty')
     ->fields(array('nid' => $nid))
     ->execute();
