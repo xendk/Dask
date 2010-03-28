@@ -214,9 +214,8 @@ function task_set_undirty($node) {
   else {
     $nid = $node;
   }
-
   db_delete('task_dirty')
-    ->condition(array('nid', $nid))
+    ->condition('nid', $nid)
     ->execute();
 }
 
@@ -239,29 +238,30 @@ function task_update($node) {
   if (task_is_dirty($node)) {
     $field = field_info_field('state');
     $nids = task_get_dependee_nids($node);
-    dpm('here');
-    dpm($nids);
-    $conditions = array(
-                        array('type', 'node'),
-                        array('entity_id', $nids, 'IN'),
-                        array('value', task_state_type(TASK_TYPE_RESOLVED) , 'NOT IN')
-                        );
-    $t = field_attach_query($field['id'], $conditions, array('count' => TRUE));
-    dpm($t);
-    if ($t > 0) {
-      dpm('b');
-      if (task_state_type(TASK_TYPE_ACTIVE, $node->state[LANGUAGE_NONE][0]['value'])) {
-        $node->state[LANGUAGE_NONE][0]['value'] = TASK_BLOCKED;
-        node_save($node);
+    if ($nids) {
+      $conditions = array(
+                          array('type', 'node'),
+                          array('entity_id', $nids, 'IN'),
+                          array('value', task_state_type(TASK_TYPE_RESOLVED) , 'NOT IN')
+                          );
+      $t = field_attach_query($field['id'], $conditions, array('count' => TRUE));
+      if ($t > 0) {
+        if (task_state_type(TASK_TYPE_ACTIVE, $node->state[LANGUAGE_NONE][0]['value'])) {
+          $node->state[LANGUAGE_NONE][0]['value'] = TASK_BLOCKED;
+          node_save($node);
+        }
+      }
+      else {
+        if (task_state_type(TASK_TYPE_BLOCKED, $node->state[LANGUAGE_NONE][0]['value'])) {
+          $node->state[LANGUAGE_NONE][0]['value'] = TASK_ACTIVE;
+          node_save($node);
+        }
       }
     }
-    else {
-      dpm('a');
-      if (task_state_type(TASK_TYPE_BLOCKED, $node->state[LANGUAGE_NONE][0]['value'])) {
-        $node->state[LANGUAGE_NONE][0]['value'] = TASK_ACTIVE;
-        node_save($node);
-      }
+    foreach (task_get_dependant_nodes($node) as $dependant) {
+      task_dirty($dependant);
     }
+
     task_set_undirty($node);
   }
 }
