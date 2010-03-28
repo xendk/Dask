@@ -67,14 +67,7 @@ function task_install() {
   }
 
   // State field.
-  $states = array(
-    TASK_ACTIVE => 'active',
-    TASK_WORKING_ON => 'working on',
-    TASK_BLOCKED => 'blocked',
-    TASK_FEEDBACK => 'feedback',
-    TASK_RESOLVED => 'resolved',
-    TASK_REJECTED => 'rejected',
-  );
+  $states = task_state_name();
   $allowed_values = '';
   foreach ($states as $id => $name) {
     $allowed_values .= $id . '|' . $name . "\n";

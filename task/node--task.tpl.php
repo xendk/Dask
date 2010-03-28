@@ -13,5 +13,11 @@
     <h2<?php print $title_attributes; ?>><a href="<?php print $node_url; ?>"><?php print $node_title; ?></a></h2>
   <?php endif; ?>
   <?php print render($title_suffix); ?>
-!!!!
+  <?php
+    print t('by !username on !datetime',
+            array('!username' => $name, '!datetime' => $date));
+   ?>
+  <?php print render($content['state']); ?>
+  <?php print render($content['area']); ?>
+  <?php print render($content['depends_on']); ?>
 </div>

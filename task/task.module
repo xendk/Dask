@@ -49,9 +49,33 @@ function task_state_type($type, $state = NULL) {
   return $state_types[$type];
 }
 
+function task_state_name($state = NULL) {
+  static $states = array(
+    TASK_ACTIVE => 'active',
+    TASK_WORKING_ON => 'working on',
+    TASK_BLOCKED => 'blocked',
+    TASK_FEEDBACK => 'feedback',
+    TASK_RESOLVED => 'resolved',
+    TASK_REJECTED => 'rejected',
+  );
+  if ($state) {
+    if (isset($states[$state])) {
+      return $states[$state];
+    }
+    else {
+      return FALSE;
+    }
+  }
+  return $states;
+}
+
+
 function task_preprocess_node(&$variables) {
   if ($variables['node']->type == 'task') {
-    // Stuff...
+    $node = $variables['node'];
+    // Reformat date.
+    $variables['date'] = format_date($node->created, 'short');
+    // $variables['state'] = task_state_name($node->state[0][''])
   }
 }
 
