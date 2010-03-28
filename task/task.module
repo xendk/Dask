@@ -50,31 +50,9 @@ function task_state_type($type, $state = NULL) {
 }
 
 function task_preprocess_node(&$variables) {
-  $variables['theme_hook_suggestions'][] = 'node__' . $variables['view_mode'];
-}
-
-/**
- * Implements hook_entity_info_alter().
- *
- * Add our own view mode to nodes.
- */
-function task_entity_info_alter(&$entity_info) {
-  $entity_info['node']['view modes']['taskcard'] = array(
-    'label' => t('Task card'),
-  );
-}
-
-/**
- * Implements hook_field_ui_view_modes_tabs().
- */
-function task_field_ui_view_modes_tabs() {
-  $modes = array(
-    'task' => array(
-      'title' => t('Task'),
-      'view modes' => array('taskcard'),
-    ),
-  );
-  return $modes;
+  if ($variables['node']->type == 'task') {
+    // Stuff...
+  }
 }
 
 /**
@@ -82,9 +60,10 @@ function task_field_ui_view_modes_tabs() {
  */
 function task_theme() {
   return array(
-    'node__taskcard' => array(
+    'node__task' => array(
       'render element' => 'elements',
-      'template' => 'node--taskcard',
+      'template' => 'node--task',
+      'base hook' => 'node',
     ),
   );
 }

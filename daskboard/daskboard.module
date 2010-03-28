@@ -29,16 +29,19 @@ function daskboard_init() {
 }
 
 function daskboard_page($uid = 0) {
-  dpm(field_info_field('depends_on'));
-  //$node = node_load(2);
-  //task_update_dependent($node);
-  //dpm(    $field = field_read_instance('node', 'depends_on', 'task'));
-  // dpm(field_attach_query(25, array(array('type', 'node'), array('bundle', 'task'), array('nid', 1))));
-  return '';
+  $node = node_load(1);
+
+  $build = array();
+  $build['queue'] = array(
+    '#theme' => 'taskqueue',
+  );
+  $nodes = node_load_multiple(array(), array('type' => 'task'));
+  $build['queue'] += node_view_multiple($nodes, 'teaser');
+  
+  return $build;
 }
 
 function daskboard_page_mockup() {
-  drupal_add_css(drupal_get_path('module', 'daskboard') . '/daskboard.css');
   $node = node_load(1);
 
   $build = array();
@@ -47,7 +50,7 @@ function daskboard_page_mockup() {
       '#theme' => 'taskqueue',
     );
     for ($i = 0; $i < ($j == 1 ? 2 : 5); $i++) {
-      $build[$j]['items'][] = node_view($node, 'taskcard');
+      $build[$j]['nodes'][] = node_view($node, 'teaser');
     }
   }
   return $build;
@@ -66,6 +69,6 @@ function daskboard_theme() {
 }
 
 function template_preprocess_taskqueue(&$variables) {
-  $variables['items'] = $variables['elements']['items'];
+  $variables['nodes'] = $variables['elements']['nodes'];
   $variables['title'] = isset($variables['elements']['#title']) ? $variables['elements']['#title'] : '';
 }
