@@ -293,6 +293,13 @@ function task_get_dependant_nodes($node) {
 
 function task_get_dependant_nids($node) {
   $field = field_info_field('depends_on');
+  $nids = array();
   $dependants = field_attach_query($field['id'], array(array('type', 'node'), array('nid', $node->nid)));
-  return (isset($dependants['node']) ? array_keys($dependants['node']) : array());
+  if (isset($dependants['node'])) {
+    $nids = array_keys($dependants['node']);
+  }
+  if ($node->part_of[LANGUAGE_NONE][0]['nid']) {
+    $nids[] = $node->part_of[LANGUAGE_NONE][0]['nid'];
+  }
+  return $nids;
 }

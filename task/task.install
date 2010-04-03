@@ -72,7 +72,7 @@ function task_install() {
   foreach ($states as $id => $name) {
     $allowed_values .= $id . '|' . $name . "\n";
   }
-  
+
   $field = array(
     'field_name' => 'state',
     'type' => 'list_number',
@@ -126,6 +126,34 @@ function task_install() {
   );
   field_create_instance($instance);
 
+  // Part of field.
+  $field = array(
+    'field_name' => 'part_of',
+    'type' => 'node_reference',
+    'cardinality' => 1,
+    'settings' => array(
+      'referenceable_types' => array('task' => 'task'),
+    ),
+  );
+  field_create_field($field);
+
+  $instance = array(
+    'field_name' => 'part_of',
+    'object_type' => 'node',
+    'label' => 'Part of',
+    'bundle' => 'task',
+    'description' => 'The task this task is a part of',
+    'required' => FALSE,
+    'widget' => array(
+      'type' => 'node_reference_autocomplete',
+      'autocomplete_match' => 'contains',
+      'size' => 60,
+      'autocomplete_path' => 'node_reference/autocomplete',
+      'weight' => 1,
+    ),
+  );
+  field_create_instance($instance);
+
   // Depends on field.
   $field = array(
     'field_name' => 'depends_on',
@@ -152,8 +180,8 @@ function task_install() {
       'weight' => 1,
     ),
   );
-  field_create_instance($instance);  
-  
+  field_create_instance($instance);
+
 }
 
 /**
