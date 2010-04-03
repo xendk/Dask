@@ -1,0 +1,8 @@
+; $Id$
+
+name = Parted
+description = Dask task part editor
+package = Dask
+core = 7.x
+files[] = parted.module
+dependencies[] = task

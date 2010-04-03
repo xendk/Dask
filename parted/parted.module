@@ -1,0 +1,47 @@
+<?php
+
+// $Id$
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function parted_form_task_node_form_alter(&$form, &$form_state) {
+  $form['parted'] = array(
+    '#type' => 'parted',
+  );
+  $form['test'] = array(
+    '#type' => 'markup',
+    '#markup' => 'test',
+  );
+}
+
+/**
+ * Implements hook_element_info().
+ */
+function parted_element_info() {
+  $types['parted'] = array(
+    '#input' => TRUE,
+    '#theme_wrappers' => array('parted'),
+    // process or pre_render, or both, process setting up roughly, pre_render
+    // doing the rest, if the cache doesn't.
+  );
+  return $types;
+}
+
+/**
+ * Theming implementation.
+ */
+function theme_parted($element) {
+  return 'here';
+}
+
+/**
+ * Implements hook_theme().
+ */
+function parted_theme() {
+  return array(
+    'parted' => array(
+      'render element' => 'parted',
+    ),
+  );
+}
