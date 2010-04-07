@@ -22,17 +22,62 @@ function parted_element_info() {
   $types['parted'] = array(
     '#input' => TRUE,
     '#theme_wrappers' => array('parted'),
+    '#process' => array('parted_form_process_parted'),
     // process or pre_render, or both, process setting up roughly, pre_render
     // doing the rest, if the cache doesn't.
+  );
+  $types['parted_task'] = array(
+    '#input' => TRUE,
+    '#theme_wrappers' => array('parted_task'),
+    '#process' => array('parted_form_process_parted_task'),
+
   );
   return $types;
 }
 
 /**
+ * Implements hook_init().
+ */
+function parted_init() {
+  drupal_add_css(drupal_get_path('module', 'parted') . '/parted.css');
+}
+
+function parted_form_process_parted($element, $form_state) {
+  $element['items'][] = array(
+    '#type' => 'parted_task',
+    '#delta' => 0,
+    '#node' => node_load(1),
+  );
+  $element['items'][] = array(
+    '#type' => 'parted_task',
+    '#delta' => 1,
+    '#node' => node_load(2),
+  );
+  return $element;
+}
+
+function parted_form_process_parted_task($element, $form_state) {
+  $node = $element['#node'];
+  dpm($node);
+  $element['title'][] = array(
+    '#type' => 'textfield',
+    '#default_value' => $node->title,
+  );
+  return $element;
+}
+
+/**
  * Theming implementation.
  */
-function theme_parted($element) {
-  return 'here';
+function theme_parted($variables) {
+  return '<div class="parted">' . $variables['parted']['#children'] . '</div>';
+}
+
+/**
+ * Theming implementation.
+ */
+function theme_parted_task($element) {
+  return '<div class="parted-task">' . $element['item']['#children'] . '</div>';
 }
 
 /**
@@ -42,6 +87,9 @@ function parted_theme() {
   return array(
     'parted' => array(
       'render element' => 'parted',
+    ),
+    'parted_task' => array(
+      'render element' => 'item',
     ),
   );
 }
