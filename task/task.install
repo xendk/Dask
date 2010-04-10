@@ -25,46 +25,45 @@ function task_install() {
   variable_set('node_submitted_task', FALSE);
 
   // Area field.
-  if (!taxonomy_vocabulary_load_multiple(array(), array('machine_name' => 'area'))) {
-    $description = t('The area of this task.');
-    $help = t('Select the area of this task.');
-    $vocabulary = (object) array(
-      'name' => 'Area',
-      'description' => $description,
-      'machine_name' => 'area',
-      'help' => $help,
-    );
-    taxonomy_vocabulary_save($vocabulary);
-
-    $field = array(
-      'field_name' => 'taxonomy_' . $vocabulary->machine_name,
-      'type' => 'taxonomy_term_reference',
-      'cardinality' => 1,
-      'settings' => array(
-        'allowed_values' => array(
-          array(
-            'vid' => $vocabulary->vid,
-            'parent' => 0,
-          ),
+  $description = t('The area of this task.');
+  $help = t('Select the area of this task.');
+  $vocabulary = (object) array(
+    'name' => 'Area',
+    'description' => $description,
+    'machine_name' => 'area',
+    'help' => $help,
+  );
+  taxonomy_vocabulary_save($vocabulary);
+  variable_set('task_area_vid', $vocabulary->vid);
+    
+  $field = array(
+    'field_name' => 'taxonomy_' . $vocabulary->machine_name,
+    'type' => 'taxonomy_term_reference',
+    'cardinality' => 1,
+    'settings' => array(
+      'allowed_values' => array(
+        array(
+          'vid' => $vocabulary->vid,
+          'parent' => 0,
         ),
       ),
-    );
-    field_create_field($field);
+    ),
+  );
+  field_create_field($field);
 
-    $instance = array(
-      'field_name' => 'taxonomy_' . $vocabulary->machine_name,
-      'object_type' => 'node',
-      'label' => $vocabulary->name,
-      'bundle' => 'task',
-      'description' => $vocabulary->help,
-      'required' => TRUE,
-      'widget' => array(
-        'type' => 'options_select',
-        'weight' => 1,
-      ),
-    );
-    field_create_instance($instance);
-  }
+  $instance = array(
+    'field_name' => 'taxonomy_' . $vocabulary->machine_name,
+    'object_type' => 'node',
+    'label' => $vocabulary->name,
+    'bundle' => 'task',
+    'description' => $vocabulary->help,
+    'required' => TRUE,
+    'widget' => array(
+      'type' => 'options_select',
+      'weight' => 1,
+    ),
+  );
+  field_create_instance($instance);
 
   // State field.
   $states = task_state_name();
@@ -216,4 +215,5 @@ function task_uninstall() {
   field_delete_field('assigned_to');
   field_delete_field('depends_on');
   node_type_delete('task');
+  variable_del('task_area_vid');
 }

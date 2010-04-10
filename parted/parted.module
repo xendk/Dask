@@ -6,13 +6,15 @@
  * Implements hook_form_FORM_ID_alter().
  */
 function parted_form_task_node_form_alter(&$form, &$form_state) {
-  $form['parted'] = array(
+  /*
+   $form['parted'] = array(
     '#type' => 'parted',
   );
   $form['test'] = array(
     '#type' => 'markup',
     '#markup' => 'test',
   );
+*/
 }
 
 /**
@@ -59,10 +61,25 @@ function parted_form_process_parted($element, $form_state) {
 function parted_form_process_parted_task($element, $form_state) {
   $node = $element['#node'];
   dpm($node);
-  $element['title'][] = array(
+  $element['title'] = array(
     '#type' => 'textfield',
     '#default_value' => $node->title,
   );
+
+  // TODO: don't do this for every node.
+  $terms = taxonomy_get_tree(variable_get('task_area_vid', NULL));
+  if ($terms) {
+    foreach ($terms as $term) {
+      $options[$term->tid] = str_repeat('-', $term->depth) . $term->name;
+    }
+  }
+
+  $element['area'] = array(
+    '#type' => 'select',
+    '#options' => $options,
+    '#default_value' => null,
+  );
+  
   return $element;
 }
 
