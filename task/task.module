@@ -19,6 +19,19 @@ define('TASK_RESOLVED', 5);
 define('TASK_REJECTED', 6);
 
 /**
+ * Implements hook_node_info().
+ */
+function task_node_info() {
+  return array(
+    'task' => array(
+      'name' => t('Task'),
+      'base' => 'task',
+      'description' => t('Task.'),
+    )
+  );
+}
+
+/**
  * Implements hook_init().
  */
 function task_init() {
@@ -101,6 +114,117 @@ function task_cron_queue_info() {
     'time' => 60,
   );
   return $queues;
+}
+
+// --- Node type hooks ---
+
+/**
+ * Implements hook_load().
+ */
+function task_load($nodes) {
+  $vids = array();
+  foreach ($nodes as $node) {
+    $node->depends_on = array();
+    $vids[] = $node->vid;
+  }
+  $result = db_query('SELECT nid, vid, state, part_of, area, assigned_to FROM {task_data} WHERE vid IN (:vids)', array(':vids' => $vids));
+  foreach ($result as $record) {
+    $nodes[$record->nid]->state = $record->state;
+    $nodes[$record->nid]->part_of = $record->part_of;
+    $nodes[$record->nid]->area = $record->area;
+    $nodes[$record->nid]->assigned_to = $record->assigned_to;
+  }
+  $result = db_query('SELECT nid, vid, depends_on FROM {task_dependencies} WHERE vid IN (:vids)', array(':vids' => $vids));
+  foreach ($result as $record) {
+    $nodes[$record->nid]->depends_on[] = $record->depends_on;
+  }
+}
+
+/**
+ * Implements hook_insert().
+ */
+function task_insert($node) {
+  db_insert('task_data')
+    ->fields(array(
+        'nid' => $node->nid,
+        'vid' => $node->vid,
+        'state' => $node->state,
+        'part_of' => $node->part_of,
+        'area' => $node->area,
+        'assigned_to' => $node->assigned_to,
+      ))
+    ->execute();
+  $insert = db_insert('task_dependencies')
+    ->fields(array('nid', 'vid', 'depends_on'));
+  foreach ($node->depends_on as $dependency) {
+    $insert->values(array($node->nid, $node->vid, $dependency));
+  }
+  $insert->execute();
+}
+
+/**
+ * Implements hook_update().
+ */
+function task_update($node) {
+  db_merge('task_data')
+    ->key(array(
+        'nid' => $node->nid,
+        'vid' => $node->vid,
+      ))
+    ->fields(array(
+        'state' => $node->state,
+        'part_of' => $node->part_of,
+        'area' => $node->area,
+        'assigned_to' => $node->assigned_to,        
+      ))
+    ->execute();
+  db_delete('task_dependencies')
+    ->condition(array(
+        'nid' => $node->nid,
+        'vid' => $node->vid,
+      ))
+    ->execute();
+  $insert = db_insert('task_dependencies')
+    ->fields(array('nid', 'vid', 'depends_on'));
+  foreach ($node->depends_on as $dependency) {
+    $insert->values(array($node->nid, $node->vid, $dependency));
+  }
+  $insert->execute();
+}
+
+// hook_view
+// hook_form
+// hook_validate
+
+
+/**
+ * Implements hook_delete().
+ */
+function task_delete($node) {
+  db_delete('task_data')
+    ->condition('nid', $node->nid)
+    ->execute();
+  db_delete('task_dependencies')
+    ->condition('nid', $node->nid)
+    ->execute();
+  db_delete('task_dirty')
+    ->condition('nid', $node->nid)
+    ->execute();
+}
+
+// --- General node hooks ---
+
+/**
+ * Implements hook_node_revision_delete().
+ *
+ * Apparently, there's no node type specific revision deletion hook, so we use
+ * this instead.
+ */
+function task_node_revision_delete($node) {
+  if ($node->type == 'task') {
+    db_delete('task_data')->condition('vid', $node->vid)->execute();
+    db_delete('task_dependencies')->condition('vid', $node->vid)->execute();
+  }
 }
 
 /**

@@ -11,14 +11,6 @@
  */
 function task_install() {
 
-  $node_info = (object) array(
-    'type' => 'task',
-    'name' => t('Task'),
-    'base' => 'node_content',
-    'description' => t('Task.'),
-    'help' => '',
-    'locked' => TRUE,
-  );
   node_type_save($node_info);
 
   variable_set('node_options_task', array('status'));
@@ -35,151 +27,6 @@ function task_install() {
   );
   taxonomy_vocabulary_save($vocabulary);
   variable_set('task_area_vid', $vocabulary->vid);
-    
-  $field = array(
-    'field_name' => 'taxonomy_' . $vocabulary->machine_name,
-    'type' => 'taxonomy_term_reference',
-    'cardinality' => 1,
-    'settings' => array(
-      'allowed_values' => array(
-        array(
-          'vid' => $vocabulary->vid,
-          'parent' => 0,
-        ),
-      ),
-    ),
-  );
-  field_create_field($field);
-
-  $instance = array(
-    'field_name' => 'taxonomy_' . $vocabulary->machine_name,
-    'object_type' => 'node',
-    'label' => $vocabulary->name,
-    'bundle' => 'task',
-    'description' => $vocabulary->help,
-    'required' => TRUE,
-    'widget' => array(
-      'type' => 'options_select',
-      'weight' => 1,
-    ),
-  );
-  field_create_instance($instance);
-
-  // State field.
-  $states = task_state_name();
-  $allowed_values = '';
-  foreach ($states as $id => $name) {
-    $allowed_values .= $id . '|' . $name . "\n";
-  }
-
-  $field = array(
-    'field_name' => 'state',
-    'type' => 'list_number',
-    'cardinality' => 1,
-    'settings' => array(
-      'allowed_values' => $allowed_values,
-    ),
-  );
-  field_create_field($field);
-
-  $instance = array(
-    'field_name' => 'state',
-    'object_type' => 'node',
-    'label' => 'State',
-    'bundle' => 'task',
-    'description' => 'State of this task',
-    'required' => TRUE,
-    'widget' => array(
-      'type' => 'options_select',
-      'weight' => 1,
-    ),
-  );
-  field_create_instance($instance);
-
-  // Assigned to field.
-  $field = array(
-    'field_name' => 'assigned_to',
-    'type' => 'user_reference',
-    'cardinality' => 1,
-    'settings' => array(
-      'referenceable_roles' => array(2 => 2), // Authenticated user.
-      'referenceable_status' => array(1 => '1', 0 => '0'),
-    ),
-  );
-  field_create_field($field);
-
-  $instance = array(
-    'field_name' => 'assigned_to',
-    'object_type' => 'node',
-    'label' => 'Assigned to',
-    'bundle' => 'task',
-    'description' => 'Who is responsible for this task',
-    'required' => FALSE,
-    'widget' => array(
-      'type' => 'user_reference_autocomplete',
-      'autocomplete_match' => 'contains',
-      'size' => 60,
-      'autocomplete_path' => 'user_reference/autocomplete',
-      'weight' => 1,
-    ),
-  );
-  field_create_instance($instance);
-
-  // Part of field.
-  $field = array(
-    'field_name' => 'part_of',
-    'type' => 'node_reference',
-    'cardinality' => 1,
-    'settings' => array(
-      'referenceable_types' => array('task' => 'task'),
-    ),
-  );
-  field_create_field($field);
-
-  $instance = array(
-    'field_name' => 'part_of',
-    'object_type' => 'node',
-    'label' => 'Part of',
-    'bundle' => 'task',
-    'description' => 'The task this task is a part of',
-    'required' => FALSE,
-    'widget' => array(
-      'type' => 'node_reference_autocomplete',
-      'autocomplete_match' => 'contains',
-      'size' => 60,
-      'autocomplete_path' => 'node_reference/autocomplete',
-      'weight' => 1,
-    ),
-  );
-  field_create_instance($instance);
-
-  // Depends on field.
-  $field = array(
-    'field_name' => 'depends_on',
-    'type' => 'node_reference',
-    'cardinality' => FIELD_CARDINALITY_UNLIMITED,
-    'settings' => array(
-      'referenceable_types' => array('task' => 'task'),
-    ),
-  );
-  field_create_field($field);
-
-  $instance = array(
-    'field_name' => 'depends_on',
-    'object_type' => 'node',
-    'label' => 'Depends on',
-    'bundle' => 'task',
-    'description' => 'Other tasks this depends on',
-    'required' => FALSE,
-    'widget' => array(
-      'type' => 'node_reference_autocomplete',
-      'autocomplete_match' => 'contains',
-      'size' => 60,
-      'autocomplete_path' => 'node_reference/autocomplete',
-      'weight' => 1,
-    ),
-  );
-  field_create_instance($instance);
 
 }
 
@@ -187,6 +34,75 @@ function task_install() {
  * Implements hook_schema().
  */
 function task_schema() {
+  $schema['task_data'] = array(
+    'description' => 'Stores task data.',
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Node id of task.',
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Node version id of task.',
+      ),
+      'state' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'size' => 'tiny',
+        'description' => 'The state of this task.',
+      ),
+      'part_of' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Task this task is part of.',
+      ),
+      'area' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The area term id of the task.',
+      ),
+      'assigned_to' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'The user this task is assigned to.',
+      ),
+    ),
+    'primary key' => array('nid', 'vid'),
+    'indexes' => array(
+      'state' = array('state'),
+      'part_of' = array('part_of'),
+      'area' = array('area'),
+      'assigned_to' = array('assigned_to'),
+    ),
+  );
+
+  $schema['task_dependencies'] = array(
+    'description' => 'Task dependencies.',
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Node id of task.',
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Node version id of task.',
+      ),
+      'depends_on' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Node id of task depended upon.',
+      ),
+    ),
+    'primary key' => array('nid', 'vid'),
+    'indexes' => array(
+      'depends_on' = array('depends_on'),
+    ),
+  );
+  
   $schema['task_dirty'] = array(
     'description' => 'Stores which task are dirty and needs update.',
     'fields' => array(
@@ -208,12 +124,7 @@ function task_schema() {
 function task_uninstall() {
   if ($voc = taxonomy_vocabulary_load_multiple(array(), array('machine_name' => 'area'))) {
     $voc = reset($voc);
-    field_delete_field('taxonomy_' . $voc->machine_name);
     taxonomy_vocabulary_delete($voc->vid);
   }
-  field_delete_field('state');
-  field_delete_field('assigned_to');
-  field_delete_field('depends_on');
-  node_type_delete('task');
   variable_del('task_area_vid');
 }
